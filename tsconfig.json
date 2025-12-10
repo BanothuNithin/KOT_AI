@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "allowJs": true,
+    "allowImportingTsExtensions": true,
+
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+
+    "moduleDetection": "force",
+
+    "paths": {
+      "@/*": ["./*"]
+    },
+
+    "types": [
+      "node",
+      "vite/client" 
+    ]
+  }
+}

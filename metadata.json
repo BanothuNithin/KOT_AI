@@ -1,0 +1,5 @@
+{
+  "name": "SmartKOT Inventory Engine",
+  "description": "A high-performance restaurant POS demo featuring a real-time inventory reservation engine and a proactive AI stock monitoring agent.",
+  "requestFramePermissions": []
+}
