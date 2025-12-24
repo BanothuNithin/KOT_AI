@@ -12,8 +12,8 @@ const checkUsers = async () => {
       const passwordHash = await bcrypt.default.hash('admin123', saltRounds);
 
       await pool.execute(
-        'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
-        ['admin', 'admin@smartkot.com', passwordHash, 'ADMIN']
+        'INSERT INTO users (id, name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?, ?)',
+        ['admin-user-uuid-12345', 'Admin User', 'admin@smartkot.com', '+1234567890', passwordHash, 'ADMIN']
       );
       console.log('Default admin user created!');
     }

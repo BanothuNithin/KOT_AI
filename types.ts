@@ -75,6 +75,12 @@ export interface Customer {
   createdAt?: string;
 }
 
+export interface User {
+  id: string;
+  name: string;
+  role: 'USER' | 'ADMIN' | 'CHEF' | 'ASSEMBLER';
+}
+
 export interface InvoiceItem {
   id?: string; // UUID
   invoiceId?: string;

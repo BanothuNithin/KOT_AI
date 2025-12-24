@@ -83,7 +83,8 @@ const DeliveryStats: React.FC<DeliveryStatsProps> = ({ token }) => {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6">
+      <div className="max-w-md mx-auto space-y-6">
       <div className="flex items-center gap-2 mb-6">
         <Truck className="w-6 h-6 text-indigo-600" />
         <h2 className="text-2xl font-bold text-slate-900">Delivery Statistics</h2>
@@ -175,6 +176,7 @@ const DeliveryStats: React.FC<DeliveryStatsProps> = ({ token }) => {
             </p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -1,19 +1,23 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dish, Ingredient } from '../types';
-import { Plus, Minus } from 'lucide-react';
+import { Dish, Ingredient, User } from '../types';
+import { Plus, Minus, Settings, ShoppingCart } from 'lucide-react';
 
 interface MenuGridProps {
   menu: Dish[];
   ingredients: Ingredient[];
   onAddToOrder: (dish: Dish, qty: number) => void;
+  onUpdateInventory?: (dish: Dish) => void;
+  currentUser: User | null;
 }
 
 const MenuItem: React.FC<{
   dish: Dish;
   ingredients: Ingredient[];
   onAddToOrder: (dish: Dish, qty: number) => void;
-}> = ({ dish, ingredients, onAddToOrder }) => {
+  onUpdateInventory?: (dish: Dish) => void;
+  currentUser: User | null;
+}> = ({ dish, ingredients, onAddToOrder, onUpdateInventory, currentUser }) => {
   const [quantity, setQuantity] = useState(1);
 
   // Calculate the maximum number of dishes we can make with current stock
@@ -95,9 +99,16 @@ const MenuItem: React.FC<{
       </div>
 
       <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 mt-4">
-        {isAvailable ? (
+        {currentUser?.role === 'ADMIN' ? (
+          // Admin sees no interactive buttons - just view-only menu
+          <div className="h-10 flex items-center justify-center w-full">
+            <span className="text-xs text-slate-500 font-medium bg-slate-100 px-3 py-1 rounded-full">
+              View Only - Admin Access
+            </span>
+          </div>
+        ) : isAvailable ? (
           <div className="flex items-center bg-slate-50 rounded-lg border border-slate-200 h-10 overflow-hidden">
-            <button 
+            <button
               onClick={handleDecrement}
               disabled={quantity <= 1}
               className="px-3 h-full hover:bg-slate-200 text-slate-600 disabled:opacity-30 flex items-center transition-colors"
@@ -105,7 +116,7 @@ const MenuItem: React.FC<{
               <Minus className="w-4 h-4" />
             </button>
             <span className="w-8 text-center text-sm font-bold text-slate-700 bg-white">{quantity}</span>
-            <button 
+            <button
               onClick={handleIncrement}
               disabled={quantity >= limit}
               className="px-3 h-full hover:bg-slate-200 text-slate-600 disabled:opacity-30 flex items-center transition-colors"
@@ -114,36 +125,54 @@ const MenuItem: React.FC<{
             </button>
           </div>
         ) : (
-           <div className="h-10"></div> 
+           <div className="h-10"></div>
         )}
 
-        <button
-          onClick={handleAdd}
-          disabled={!isAvailable}
-          className={`h-10 px-4 rounded-lg text-sm font-bold transition-all duration-200 ml-auto shadow-sm active:scale-95 ${
-            isAvailable 
-              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-indigo-200' 
-              : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-          }`}
-        >
-          {isAvailable ? 'Add to Cart' : 'Unavailable'}
-        </button>
+        {currentUser?.role === 'ADMIN' ? (
+          // No button for admin
+          <div className="h-10"></div>
+        ) : currentUser?.role === 'CHEF' ? (
+          <button
+            onClick={() => onUpdateInventory?.(dish)}
+            className="h-10 px-4 rounded-lg text-sm font-bold transition-all duration-200 ml-auto shadow-sm active:scale-95 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 shadow-orange-200 flex items-center gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            Update Inventory
+          </button>
+        ) : (
+          <button
+            onClick={handleAdd}
+            disabled={!isAvailable}
+            className={`h-10 px-4 rounded-lg text-sm font-bold transition-all duration-200 ml-auto shadow-sm active:scale-95 flex items-center gap-2 ${
+              isAvailable
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-indigo-200'
+                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            <ShoppingCart className="w-4 h-4" />
+            {isAvailable ? 'Add to Cart' : 'Unavailable'}
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
-export const MenuGrid: React.FC<MenuGridProps> = ({ menu, ingredients, onAddToOrder }) => {
+export const MenuGrid: React.FC<MenuGridProps> = ({ menu, ingredients, onAddToOrder, onUpdateInventory, currentUser }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3">
-      {menu.map((dish) => (
-        <MenuItem 
-          key={dish.id} 
-          dish={dish} 
-          ingredients={ingredients} 
-          onAddToOrder={onAddToOrder} 
-        />
-      ))}
+    <div className="max-w-md mx-auto">
+      <div className="grid grid-cols-1 gap-3">
+        {menu.map((dish) => (
+          <MenuItem
+            key={dish.id}
+            dish={dish}
+            ingredients={ingredients}
+            onAddToOrder={onAddToOrder}
+            onUpdateInventory={onUpdateInventory}
+            currentUser={currentUser}
+          />
+        ))}
+      </div>
     </div>
   );
 };

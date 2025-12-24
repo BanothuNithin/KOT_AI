@@ -147,6 +147,25 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToRegister }) => {
               </button>
             </p>
           </div>
+
+          {/* Test Credentials */}
+          <div className="mt-8 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <h3 className="text-sm font-semibold text-slate-700 mb-3">Test Credentials</h3>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-600">Admin:</span>
+                <span className="font-mono text-slate-800">admin@smartkot.com / admin123</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">Chef:</span>
+                <span className="font-mono text-slate-800">chef@smartkot.com / chef123</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600">User:</span>
+                <span className="font-mono text-slate-800">user@smartkot.com / user123</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

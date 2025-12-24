@@ -18,6 +18,8 @@ import { AlertsPanel } from "./components/AlertsPanel";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import DeliveryStats from "./components/DeliveryStats";
+import InventoryModal from "./components/InventoryModal";
+import ActiveOrdersDashboard from "./components/ActiveOrdersDashboard";
 
 import { generateInventoryInsight } from "./services/geminiServices";
 
@@ -57,6 +59,9 @@ const App: React.FC = () => {
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
   const [activeTab, setActiveTab] = useState<"menu" | "kitchen" | "inventory">("menu");
+
+  // Inventory modal state
+  const [inventoryModalDish, setInventoryModalDish] = useState<Dish | null>(null);
 
   // Mutex to prevent duplicate KOT creation
   const placeOrderLock = useRef(false);
@@ -134,6 +139,24 @@ const App: React.FC = () => {
       }
       return [...prev, { dish, quantity: qtyToAdd }];
     });
+  };
+
+  // ---------------- UPDATE INVENTORY (Chef Only) ----------------
+  const handleUpdateInventory = (dish: Dish) => {
+    if (currentUser?.role !== 'CHEF') return;
+    setInventoryModalDish(dish);
+  };
+
+  const handleUpdateStock = (ingredientId: string, newStock: number) => {
+    setInventory(prev => prev.map(ing =>
+      ing.id === ingredientId
+        ? { ...ing, totalStock: newStock }
+        : ing
+    ));
+  };
+
+  const closeInventoryModal = () => {
+    setInventoryModalDish(null);
   };
 
   // ---------------- PLACE ORDER ----------------
@@ -388,150 +411,339 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Mobile Tab Navigation */}
-        <div className="lg:hidden bg-white border-b border-slate-200 px-4 py-2">
-          <div className="flex gap-1">
+      {/* MAIN CONTENT - Responsive Design */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Desktop Layout - All Sections Visible */}
+        <div className="hidden lg:flex flex-1 overflow-hidden gap-4 p-4">
+          <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
+            <div className="p-4 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm">
+              <h2 className="font-bold flex items-center gap-2 text-lg">
+                <LayoutGrid className="w-5 h-5 text-indigo-600" />
+                Menu
+              </h2>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-4">
+                <MenuGrid
+                  menu={MENU}
+                  ingredients={inventory}
+                  onAddToOrder={addToCart}
+                  onUpdateInventory={handleUpdateInventory}
+                  currentUser={currentUser}
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-200/60 bg-slate-50/80 backdrop-blur-sm">
+              {currentOrder.length > 0 ? (
+                <div className="card">
+                  <div className="flex justify-between mb-3 font-bold text-lg">
+                    <span>Current Order</span>
+                    <span className="text-indigo-600">${cartTotal.toFixed(2)}</span>
+                  </div>
+
+                  <ul className="max-h-32 overflow-y-auto text-sm mb-4 space-y-1">
+                    {currentOrder.map((item, idx) => (
+                      <li className="flex justify-between py-1 px-2 bg-slate-50 rounded" key={idx}>
+                        <span>{item.quantity}x {item.dish.name}</span>
+                        <span className="font-medium">${(item.dish.price * item.quantity).toFixed(2)}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCurrentOrder([])}
+                      className="btn-secondary flex-1"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={handlePlaceOrder}
+                      className="btn-primary flex-1 flex items-center justify-center gap-2"
+                    >
+                      <ShoppingCart className="w-4 h-4" /> Place Order
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <ShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                  <p className="text-slate-500">Your cart is empty</p>
+                  <p className="text-sm text-slate-400">Add some delicious items!</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
+            <div className="p-4 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm flex justify-between items-center">
+              <h2 className="font-bold flex items-center gap-2 text-lg">
+                {currentUser?.role === 'ADMIN' ? (
+                  <>
+                    <BarChart3 className="w-5 h-5 text-indigo-600" /> Delivery Dashboard
+                  </>
+                ) : currentUser?.role === 'CHEF' ? (
+                  <>
+                    <ChefHat className="w-5 h-5 text-orange-600" /> Active Orders Dashboard
+                  </>
+                ) : (
+                  <>
+                    <Receipt className="w-5 h-5 text-indigo-600" /> Your Order is here..😀
+                  </>
+                )}
+              </h2>
+              {currentUser?.role !== 'ADMIN' && currentUser?.role !== 'CHEF' && (
+                <span className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 py-1 rounded-full text-sm font-medium shadow-sm">
+                  {activeKotsCount} Active Orders
+                </span>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {currentUser?.role === 'ADMIN' ? (
+                <DeliveryStats token={token} />
+              ) : currentUser?.role === 'CHEF' ? (
+                <ActiveOrdersDashboard
+                  kots={kots}
+                  onPayKOT={handlePayKOT}
+                  onDeleteKOT={handleDeleteKOT}
+                  currentUser={currentUser}
+                />
+              ) : (
+                <div className="p-4">
+                  <KOTList
+                    kots={kots}
+                    currentUser={currentUser}
+                    deliveryAddress={deliveryAddress}
+                    setDeliveryAddress={setDeliveryAddress}
+                    onPayKOT={handlePayKOT}
+                    onDeleteKOT={handleDeleteKOT}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {hasStaffPrivileges && (
+            <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
+              <div className="border-b border-slate-200/60">
+                <AlertsPanel alerts={alerts} aiInsight={aiInsight} onGenerateInsight={handleAiInsight} isLoading={isGeneratingInsight} />
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                <InventoryTable ingredients={inventory} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Layout - Single Section with Navigation */}
+        <div className="flex-1 overflow-hidden lg:hidden">
+          {/* Menu Section */}
+          <section className={`h-full flex flex-col transition-all duration-300 ${
+            activeTab === "menu" ? "block" : "hidden"
+          }`}>
+            <div className="p-4 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm sticky top-0 shadow-sm">
+              <h2 className="font-bold flex items-center gap-2 text-lg">
+                <LayoutGrid className="w-5 h-5 text-indigo-600" />
+                Menu
+              </h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <MenuGrid
+                menu={MENU}
+                ingredients={inventory}
+                onAddToOrder={addToCart}
+                onUpdateInventory={handleUpdateInventory}
+                currentUser={currentUser}
+              />
+            </div>
+            <div className="p-4 border-t border-slate-200/60 bg-slate-50/80 backdrop-blur-sm">
+              {currentOrder.length > 0 ? (
+                <div className="card">
+                  <div className="flex justify-between mb-3 font-bold text-lg">
+                    <span>Current Order</span>
+                    <span className="text-indigo-600">${cartTotal.toFixed(2)}</span>
+                  </div>
+
+                  <ul className="max-h-32 overflow-y-auto text-sm mb-4 space-y-1">
+                    {currentOrder.map((item, idx) => (
+                      <li className="flex justify-between py-1 px-2 bg-slate-50 rounded" key={idx}>
+                        <span>{item.quantity}x {item.dish.name}</span>
+                        <span className="font-medium">${(item.dish.price * item.quantity).toFixed(2)}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCurrentOrder([])}
+                      className="btn-secondary flex-1"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={handlePlaceOrder}
+                      className="btn-primary flex-1 flex items-center justify-center gap-2"
+                    >
+                      <ShoppingCart className="w-4 h-4" /> Place Order
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <ShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                  <p className="text-slate-500">Your cart is empty</p>
+                  <p className="text-sm text-slate-400">Add some delicious items!</p>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Dashboard/Kitchen Section */}
+          <section className={`h-full flex flex-col transition-all duration-300 ${
+            activeTab === "kitchen" ? "block" : "hidden"
+          }`}>
+            <div className="p-4 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm sticky top-0 shadow-sm flex justify-between items-center">
+              <h2 className="font-bold flex items-center gap-2 text-lg">
+                {currentUser?.role === 'ADMIN' ? (
+                  <>
+                    <BarChart3 className="w-5 h-5 text-indigo-600" /> Delivery Dashboard
+                  </>
+                ) : currentUser?.role === 'CHEF' ? (
+                  <>
+                    <ChefHat className="w-5 h-5 text-orange-600" /> Active Orders Dashboard
+                  </>
+                ) : (
+                  <>
+                    <Receipt className="w-5 h-5 text-indigo-600" /> Your Order is here..😀
+                  </>
+                )}
+              </h2>
+              {currentUser?.role !== 'ADMIN' && currentUser?.role !== 'CHEF' && (
+                <span className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 py-1 rounded-full text-sm font-medium shadow-sm">
+                  {activeKotsCount} Active Orders
+                </span>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {currentUser?.role === 'ADMIN' ? (
+                <DeliveryStats token={token} />
+              ) : currentUser?.role === 'CHEF' ? (
+                <ActiveOrdersDashboard
+                  kots={kots}
+                  onPayKOT={handlePayKOT}
+                  onDeleteKOT={handleDeleteKOT}
+                  currentUser={currentUser}
+                />
+              ) : (
+                <div className="p-4">
+                  <KOTList
+                    kots={kots}
+                    currentUser={currentUser}
+                    deliveryAddress={deliveryAddress}
+                    setDeliveryAddress={setDeliveryAddress}
+                    onPayKOT={handlePayKOT}
+                    onDeleteKOT={handleDeleteKOT}
+                  />
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Inventory Section */}
+          {hasStaffPrivileges && (
+            <section className={`h-full flex flex-col transition-all duration-300 ${
+              activeTab === "inventory" ? "block" : "hidden"
+            }`}>
+              <div className="border-b border-slate-200/60">
+                <AlertsPanel alerts={alerts} aiInsight={aiInsight} onGenerateInsight={handleAiInsight} isLoading={isGeneratingInsight} />
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                <InventoryTable ingredients={inventory} />
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* Bottom Navigation - Mobile Only */}
+        <nav className="bg-white border-t border-slate-200 shadow-lg lg:hidden">
+          <div className="flex">
             <button
               onClick={() => setActiveTab("menu")}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+              className={`flex-1 py-3 px-2 flex flex-col items-center justify-center transition-all duration-200 ${
                 activeTab === "menu"
-                  ? "bg-indigo-100 text-indigo-700 shadow-sm"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-indigo-50 text-indigo-700 border-t-2 border-indigo-500"
+                  : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              <LayoutGrid className="w-4 h-4 inline mr-1" />
-              Menu
+              <LayoutGrid className={`w-5 h-5 mb-1 ${
+                activeTab === "menu" ? "text-indigo-600" : "text-slate-400"
+              }`} />
+              <span className={`text-xs font-medium ${
+                activeTab === "menu" ? "text-indigo-700" : "text-slate-500"
+              }`}>
+                Menu
+              </span>
             </button>
+
             <button
               onClick={() => setActiveTab("kitchen")}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+              className={`flex-1 py-3 px-2 flex flex-col items-center justify-center transition-all duration-200 ${
                 activeTab === "kitchen"
-                  ? "bg-indigo-100 text-indigo-700 shadow-sm"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-indigo-50 text-indigo-700 border-t-2 border-indigo-500"
+                  : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              <Receipt className="w-4 h-4 inline mr-1" />
-              {currentUser?.role === 'ADMIN' ? 'Dashboard' : 'Kitchen'}
+              {currentUser?.role === 'ADMIN' ? (
+                <BarChart3 className={`w-5 h-5 mb-1 ${
+                  activeTab === "kitchen" ? "text-indigo-600" : "text-slate-400"
+                }`} />
+              ) : currentUser?.role === 'CHEF' ? (
+                <ChefHat className={`w-5 h-5 mb-1 ${
+                  activeTab === "kitchen" ? "text-orange-600" : "text-slate-400"
+                }`} />
+              ) : (
+                <Receipt className={`w-5 h-5 mb-1 ${
+                  activeTab === "kitchen" ? "text-indigo-600" : "text-slate-400"
+                }`} />
+              )}
+              <span className={`text-xs font-medium ${
+                activeTab === "kitchen" ? "text-indigo-700" : "text-slate-500"
+              }`}>
+                {currentUser?.role === 'ADMIN' ? 'Dashboard' :
+                 currentUser?.role === 'CHEF' ? 'Orders' : 'Kitchen'}
+              </span>
             </button>
+
             {hasStaffPrivileges && (
               <button
                 onClick={() => setActiveTab("inventory")}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                className={`flex-1 py-3 px-2 flex flex-col items-center justify-center transition-all duration-200 ${
                   activeTab === "inventory"
-                    ? "bg-indigo-100 text-indigo-700 shadow-sm"
-                    : "text-slate-600 hover:bg-slate-100"
+                    ? "bg-indigo-50 text-indigo-700 border-t-2 border-indigo-500"
+                    : "text-slate-600 hover:bg-slate-50"
                 }`}
               >
-                <UtensilsCrossed className="w-4 h-4 inline mr-1" />
-                Inventory
+                <UtensilsCrossed className={`w-5 h-5 mb-1 ${
+                  activeTab === "inventory" ? "text-indigo-600" : "text-slate-400"
+                }`} />
+                <span className={`text-xs font-medium ${
+                  activeTab === "inventory" ? "text-indigo-700" : "text-slate-500"
+                }`}>
+                  Inventory
+                </span>
               </button>
             )}
           </div>
-        </div>
-
-        {/* Menu Column */}
-        <section className={`flex-col border-r border-slate-200/60 bg-white/50 backdrop-blur-sm lg:flex-[3] lg:flex ${activeTab === "menu" ? "flex" : "hidden"} transition-all duration-300`}>
-          <div className="p-4 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm sticky top-0 shadow-sm">
-            <h2 className="font-bold flex items-center gap-2 text-lg">
-              <LayoutGrid className="w-5 h-5 text-indigo-600" /> 
-              Menu
-            </h2>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            <MenuGrid menu={MENU} ingredients={inventory} onAddToOrder={addToCart} />
-          </div>
-          <div className="p-4 border-t border-slate-200/60 bg-slate-50/80 backdrop-blur-sm">
-            {currentOrder.length > 0 ? (
-              <div className="card">
-                <div className="flex justify-between mb-3 font-bold text-lg">
-                  <span>Current Order</span>
-                  <span className="text-indigo-600">${cartTotal.toFixed(2)}</span>
-                </div>
-
-                <ul className="max-h-32 overflow-y-auto text-sm mb-4 space-y-1">
-                  {currentOrder.map((item, idx) => (
-                    <li className="flex justify-between py-1 px-2 bg-slate-50 rounded" key={idx}>
-                      <span>{item.quantity}x {item.dish.name}</span>
-                      <span className="font-medium">${(item.dish.price * item.quantity).toFixed(2)}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setCurrentOrder([])} 
-                    className="btn-secondary flex-1"
-                  >
-                    Clear
-                  </button>
-                  <button 
-                    onClick={handlePlaceOrder} 
-                    className="btn-primary flex-1 flex items-center justify-center gap-2"
-                  >
-                    <ShoppingCart className="w-4 h-4" /> Place Order
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <ShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-                <p className="text-slate-500">Your cart is empty</p>
-                <p className="text-sm text-slate-400">Add some delicious items!</p>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Kitchen Column */}
-        <section className={`flex-col border-r border-slate-200/60 bg-gradient-to-br from-slate-50 to-slate-100 lg:flex-[4] lg:flex ${activeTab === "kitchen" ? "flex" : "hidden"} transition-all duration-300`}>
-          <div className="p-4 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm sticky top-0 shadow-sm flex justify-between items-center">
-            <h2 className="font-bold flex items-center gap-2 text-lg">
-              {currentUser?.role === 'ADMIN' ? (
-                <>
-                  <BarChart3 className="w-5 h-5 text-indigo-600" /> Delivery Dashboard
-                </>
-              ) : (
-                <>
-                  <Receipt className="w-5 h-5 text-indigo-600" /> Your Order is here..😀
-                </>
-              )}
-            </h2>
-            {currentUser?.role !== 'ADMIN' && (
-              <span className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 py-1 rounded-full text-sm font-medium shadow-sm">
-                {activeKotsCount} Active Orders
-              </span>
-            )}
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {currentUser?.role === 'ADMIN' ? (
-              <DeliveryStats token={token} />
-            ) : (
-              <div className="p-4">
-                <KOTList
-                  kots={kots}
-                  currentUser={currentUser}
-                  deliveryAddress={deliveryAddress}
-                  setDeliveryAddress={setDeliveryAddress}
-                  onPayKOT={handlePayKOT}
-                  onDeleteKOT={handleDeleteKOT}
-                />
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Inventory Column (staff only) */}
-        {hasStaffPrivileges && (
-          <section className={`flex-col bg-white/50 backdrop-blur-sm lg:flex-[3] lg:flex ${activeTab === "inventory" ? "flex" : "hidden"} transition-all duration-300`}>
-            <div className="border-b border-slate-200/60">
-              <AlertsPanel alerts={alerts} aiInsight={aiInsight} onGenerateInsight={handleAiInsight} isLoading={isGeneratingInsight} />
-            </div>
-            <InventoryTable ingredients={inventory} />
-          </section>
-        )}
+        </nav>
       </main>
+      {inventoryModalDish && (
+        <InventoryModal
+          dish={inventoryModalDish}
+          ingredients={inventory}
+          onClose={closeInventoryModal}
+          onUpdateStock={handleUpdateStock}
+        />
+      )}
     </div>
   );
 };

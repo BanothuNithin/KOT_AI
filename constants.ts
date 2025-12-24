@@ -1,5 +1,27 @@
 import { Dish, Ingredient, Unit } from "./types";
 
+// Test credentials for different roles
+export const TEST_CREDENTIALS = {
+  admin: {
+    email: "admin@smartkot.com",
+    password: "admin123",
+    name: "Admin User",
+    role: "ADMIN" as const
+  },
+  chef: {
+    email: "chef@smartkot.com",
+    password: "chef123",
+    name: "Chef Mario",
+    role: "CHEF" as const
+  },
+  user: {
+    email: "user@smartkot.com",
+    password: "user123",
+    name: "John Customer",
+    role: "USER" as const
+  }
+};
+
 export const INITIAL_INGREDIENTS: Ingredient[] = [
   {
     id: "ing-1",

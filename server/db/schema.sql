@@ -58,6 +58,28 @@ VALUES (
   'Admin User',
   'admin@smartkot.com',
   '+1234567890',
-  '$2b$10$KBE0p.UJ5ABZRAXH2B15P.T3Zqo7qodsdL.EJEUKBT/C.27gyOLU6',
+  '$2b$10$Lp48rjcdPnoBIqGxcYo9K.AXbQPllRbeYfoPvxz79lJFETJYIbhU2',
   'ADMIN'
+);
+
+-- Insert chef user (password: chef123)
+INSERT INTO users (id, name, email, phone, password_hash, role)
+VALUES (
+  'chef-user-uuid-67890',
+  'Chef Mario',
+  'chef@smartkot.com',
+  '+1234567891',
+  '$2b$10$JTL0h5pOqtFc7q9RbCmRBesNZpyZGlQtD60ePDR/vIYETGeHjl3h.',
+  'CHEF'
+);
+
+-- Insert regular user (password: user123)
+INSERT INTO users (id, name, email, phone, password_hash, role)
+VALUES (
+  'user-uuid-99999',
+  'John Customer',
+  'user@smartkot.com',
+  '+1234567892',
+  '$2b$10$UroKZHOnS2VZn.bqSwChH.WnOsgHEQJSr2gU58Atoue/nIX93tB1C',
+  'USER'
 );

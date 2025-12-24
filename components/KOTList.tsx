@@ -57,7 +57,8 @@ export const KOTList: React.FC<KOTListProps> = ({ kots, onPayKOT, onDeleteKOT })
   };
 
   return (
-    <div className="space-y-4">
+    <div className="p-6">
+      <div className="max-w-md mx-auto space-y-4">
       {sortedKots.length === 0 && (
         <div className="flex flex-col items-center justify-center h-48 text-slate-400 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
           <Receipt className="w-8 h-8 mb-2 opacity-50" />
@@ -183,6 +184,7 @@ export const KOTList: React.FC<KOTListProps> = ({ kots, onPayKOT, onDeleteKOT })
           )}
         </div>
       ))}
+    </div>
     </div>
   );
 };
