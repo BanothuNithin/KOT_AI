@@ -15,6 +15,9 @@ import { InventoryTable } from "./components/InventoryTable";
 import { MenuGrid } from "./components/MenuGrid";
 import { KOTList } from "./components/KOTList";
 import { AlertsPanel } from "./components/AlertsPanel";
+import Login from "./components/Login";
+import Register from "./components/Register";
+import DeliveryStats from "./components/DeliveryStats";
 
 import { generateInventoryInsight } from "./services/geminiServices";
 
@@ -25,35 +28,91 @@ import {
   Receipt,
   BarChart3,
   UtensilsCrossed,
+  LogOut,
+  User,
 } from "lucide-react";
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: 'USER' | 'ADMIN' | 'CHEF' | 'ASSEMBLER';
+}
+
 const App: React.FC = () => {
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [token, setToken] = useState<string | null>(null);
+
   // ---------------- STATE ----------------
   const [inventory, setInventory] = useState<Ingredient[]>(INITIAL_INGREDIENTS);
   const [kots, setKots] = useState<KOT[]>([]);
   const [currentOrder, setCurrentOrder] = useState<KOTItem[]>([]);
   const [alerts, setAlerts] = useState<StockAlert[]>([]);
+  const [deliveryAddress, setDeliveryAddress] = useState<string>('');
 
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [isGeneratingInsight, setIsGeneratingInsight] = useState(false);
-  const [activeTab, setActiveTab] = useState<"menu" | "kitchen" | "inventory">(
-    "menu"
-  );
+  const [activeTab, setActiveTab] = useState<"menu" | "kitchen" | "inventory">("menu");
 
   // Mutex to prevent duplicate KOT creation
   const placeOrderLock = useRef(false);
 
-  // ============================================================
-  // 🔥  ADD TO CART (Correct max-availability logic)
-  // ============================================================
+  // Check for existing authentication on app load
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+
+    if (storedToken && storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        setToken(storedToken);
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+      } catch (error) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    }
+  }, []);
+
+  // Handle login/register/logout
+  const handleLogin = (newToken: string, user: User) => {
+    setToken(newToken);
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(user));
+  };
+  const handleRegister = handleLogin;
+  const handleLogout = () => {
+    setToken(null);
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setCurrentOrder([]);
+    setDeliveryAddress('');
+    setActiveTab('menu');
+  };
+
+  // Computed values
+  const cartTotal = currentOrder.reduce(
+    (sum, item) => sum + item.dish.price * item.quantity,
+    0
+  );
+  const activeKotsCount = kots.filter(kot => kot.status === KOTStatus.ACTIVE).length;
+
+  // ---------------- ADD TO CART ----------------
   const addToCart = (dish: Dish, qty: number) => {
     const maxPossible = dish.recipe.reduce((acc, recipeItem) => {
       const ing = inventory.find((i) => i.id === recipeItem.ingredientId);
       if (!ing) return 0;
-
       const available = ing.totalStock - ing.reservedStock;
       const dishMax = Math.floor(available / recipeItem.quantity);
-
       return Math.min(acc, dishMax);
     }, Infinity);
 
@@ -62,50 +121,40 @@ const App: React.FC = () => {
     setCurrentOrder((prev) => {
       const existing = prev.find((p) => p.dish.id === dish.id);
       const currentQty = existing ? existing.quantity : 0;
-
       const remaining = limit - currentQty;
       if (remaining <= 0) {
         alert(`Cannot add more ${dish.name}. Out of stock.`);
         return prev;
       }
-
       const qtyToAdd = Math.min(qty, remaining);
-
       if (existing) {
         return prev.map((p) =>
           p.dish.id === dish.id ? { ...p, quantity: p.quantity + qtyToAdd } : p
         );
       }
-
       return [...prev, { dish, quantity: qtyToAdd }];
     });
   };
 
-  // ============================================================
-  // 🔥 ATOMIC KOT CREATION + RACE CONDITION LOCK
-  // ============================================================
+  // ---------------- PLACE ORDER ----------------
   const handlePlaceOrder = () => {
+    if (!currentUser) return alert("Please login first");
     if (currentOrder.length === 0) return alert("Cart is empty");
     if (placeOrderLock.current) return alert("Processing...");
 
     placeOrderLock.current = true;
 
-    // Build total required map
     const needed: Record<string, number> = {};
     currentOrder.forEach((item) => {
       item.dish.recipe.forEach((r) => {
-        needed[r.ingredientId] =
-          (needed[r.ingredientId] || 0) + r.quantity * item.quantity;
+        needed[r.ingredientId] = (needed[r.ingredientId] || 0) + r.quantity * item.quantity;
       });
     });
 
     let failed = false;
 
-    // ATOMIC VALIDATION + UPDATE
     setInventory((prev) => {
       const updated = prev.map((i) => ({ ...i }));
-
-      // Validate
       for (const [id, qty] of Object.entries(needed)) {
         const ing = updated.find((x) => x.id === id);
         if (!ing || ing.totalStock - ing.reservedStock < qty) {
@@ -113,13 +162,10 @@ const App: React.FC = () => {
           return prev;
         }
       }
-
-      // Apply reservation
       for (const [id, qty] of Object.entries(needed)) {
         const ing = updated.find((x) => x.id === id);
         ing.reservedStock += qty;
       }
-
       return updated;
     });
 
@@ -128,37 +174,33 @@ const App: React.FC = () => {
       return alert("Insufficient stock for this order.");
     }
 
-    // Create KOT
     const newKot: KOT = {
       id: `kot-${Date.now()}`,
       timestamp: Date.now(),
       items: [...currentOrder],
       status: KOTStatus.ACTIVE,
-      totalAmount: currentOrder.reduce(
-        (sum, item) => sum + item.dish.price * item.quantity,
-        0
-      ),
+      totalAmount: currentOrder.reduce((sum, item) => sum + item.dish.price * item.quantity, 0),
+      customerId: currentUser.id,
     };
 
     setKots((prev) => [newKot, ...prev]);
     setCurrentOrder([]);
-
     if (window.innerWidth < 1024) setActiveTab("kitchen");
     placeOrderLock.current = false;
   };
 
-  // ============================================================
-  // 🔥 PAY KOT (with clamping)
-  // ============================================================
-  const handlePayKOT = (kotId: string) => {
+  // ---------------- PAY KOT ----------------
+  const handlePayKOT = async (kotId: string, address: string) => {
     const kot = kots.find((k) => k.id === kotId);
     if (!kot || kot.status !== KOTStatus.ACTIVE) return;
+    if (!address.trim()) return alert('Delivery address is required');
+
+    setDeliveryAddress(address);
 
     const usage: Record<string, number> = {};
     kot.items.forEach((item) => {
       item.dish.recipe.forEach((r) => {
-        usage[r.ingredientId] =
-          (usage[r.ingredientId] || 0) + r.quantity * item.quantity;
+        usage[r.ingredientId] = (usage[r.ingredientId] || 0) + r.quantity * item.quantity;
       });
     });
 
@@ -166,7 +208,6 @@ const App: React.FC = () => {
       prev.map((ing) => {
         const used = usage[ing.id];
         if (!used) return ing;
-
         return {
           ...ing,
           totalStock: Math.max(0, ing.totalStock - used),
@@ -178,11 +219,41 @@ const App: React.FC = () => {
     setKots((prev) =>
       prev.map((k) => (k.id === kotId ? { ...k, status: KOTStatus.PAID } : k))
     );
+
+    try {
+      const response = await fetch('http://localhost:3001/api/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          kotId: kot.id,
+          items: kot.items,
+          deliveryAddress: address.trim(),
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create invoice');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      alert('Payment successful! Invoice downloaded.');
+    } catch (error) {
+      console.error(error);
+      alert('Payment successful, but invoice download failed.');
+    }
   };
 
-  // ============================================================
-  // 🔥 DELETE KOT (revert reserved stock)
-  // ============================================================
+  // ---------------- DELETE KOT ----------------
   const handleDeleteKOT = (kotId: string) => {
     const kot = kots.find((k) => k.id === kotId);
     if (!kot || kot.status !== KOTStatus.ACTIVE) return;
@@ -190,8 +261,7 @@ const App: React.FC = () => {
     const usage: Record<string, number> = {};
     kot.items.forEach((item) => {
       item.dish.recipe.forEach((r) => {
-        usage[r.ingredientId] =
-          (usage[r.ingredientId] || 0) + r.quantity * item.quantity;
+        usage[r.ingredientId] = (usage[r.ingredientId] || 0) + r.quantity * item.quantity;
       });
     });
 
@@ -199,24 +269,16 @@ const App: React.FC = () => {
       prev.map((ing) => {
         const revert = usage[ing.id];
         if (!revert) return ing;
-
-        return {
-          ...ing,
-          reservedStock: Math.max(0, ing.reservedStock - revert),
-        };
+        return { ...ing, reservedStock: Math.max(0, ing.reservedStock - revert) };
       })
     );
 
     setKots((prev) =>
-      prev.map((k) =>
-        k.id === kotId ? { ...k, status: KOTStatus.DELETED } : k
-      )
+      prev.map((k) => (k.id === kotId ? { ...k, status: KOTStatus.DELETED } : k))
     );
   };
 
-  // ============================================================
-  // 🔥  AI AGENT: dedupe + expiry classification
-  // ============================================================
+  // ---------------- AI Agent & Alerts ----------------
   useEffect(() => {
     const runAgent = () => {
       const now = Date.now();
@@ -224,49 +286,27 @@ const App: React.FC = () => {
 
       inventory.forEach((item) => {
         const available = item.totalStock - item.reservedStock;
-        const lowStock = available <= item.lowStockThreshold;
-
-        // --- Low stock alerts ---
-        if (lowStock) {
+        if (available <= item.lowStockThreshold) {
           newAlerts.push({
             id: `low-${item.id}`,
             ingredientId: item.id,
             ingredientName: item.name,
             type: available <= 0 ? AlertType.CRITICAL : AlertType.LOW_STOCK,
-            message:
-              available <= 0
-                ? `${item.name} is OUT OF STOCK!`
-                : `${item.name} is low (${available} ${item.unit} left).`,
+            message: available <= 0
+              ? `${item.name} is OUT OF STOCK!`
+              : `${item.name} is low (${available} ${item.unit} left).`,
             timestamp: now,
           });
         }
 
-        // --- Expiry ---
-        const expDays =
-          (new Date(item.expiryDate).getTime() - now) / (1000 * 60 * 60 * 24);
-
+        const expDays = (new Date(item.expiryDate).getTime() - now) / (1000 * 60 * 60 * 24);
         if (expDays <= 0) {
-          newAlerts.push({
-            id: `expired-${item.id}`,
-            ingredientId: item.id,
-            ingredientName: item.name,
-            type: AlertType.EXPIRY,
-            message: `${item.name} has EXPIRED!`,
-            timestamp: now,
-          });
+          newAlerts.push({ id: `expired-${item.id}`, ingredientId: item.id, ingredientName: item.name, type: AlertType.EXPIRY, message: `${item.name} has EXPIRED!`, timestamp: now });
         } else if (expDays <= 3) {
-          newAlerts.push({
-            id: `exp-${item.id}`,
-            ingredientId: item.id,
-            ingredientName: item.name,
-            type: AlertType.EXPIRY,
-            message: `${item.name} expires in ${Math.ceil(expDays)} days.`,
-            timestamp: now,
-          });
+          newAlerts.push({ id: `exp-${item.id}`, ingredientId: item.id, ingredientName: item.name, type: AlertType.EXPIRY, message: `${item.name} expires in ${Math.ceil(expDays)} days.`, timestamp: now });
         }
       });
 
-      // Deduplicate alerts
       setAlerts((prev) => {
         const map = new Map(prev.map((a) => [a.id, a]));
         newAlerts.forEach((a) => map.set(a.id, a));
@@ -276,216 +316,222 @@ const App: React.FC = () => {
 
     runAgent();
     const t = setInterval(runAgent, 5000);
-
     return () => clearInterval(t);
   }, [inventory]);
 
-  // ============================================================
-  // AI Insight Fetch
-  // ============================================================
   const handleAiInsight = async () => {
     setIsGeneratingInsight(true);
-    const text = await generateInventoryInsight(inventory, kots);
+    const text = await generateInventoryInsight(inventory, kots, token);
     setAiInsight(text);
     setIsGeneratingInsight(false);
   };
 
-  // ============================================================
-  // RENDER UI  (UNCHANGED)
-  // ============================================================
+  const hasStaffPrivileges = currentUser?.role === 'ADMIN' || currentUser?.role === 'CHEF' || currentUser?.role === 'ASSEMBLER';
 
-  const cartTotal = currentOrder.reduce(
-    (sum, item) => sum + item.dish.price * item.quantity,
-    0
-  );
+  useEffect(() => {
+    if (!hasStaffPrivileges && activeTab === 'inventory') {
+      setActiveTab('menu');
+    }
+  }, [hasStaffPrivileges, activeTab]);
 
-  const activeKotsCount = kots.filter(
-    (k) => k.status === KOTStatus.ACTIVE
-  ).length;
+  // ---------------- RENDER ----------------
+  if (!isAuthenticated) {
+    return (
+      <div className="App">
+        {authMode === 'login' ? (
+          <Login onLogin={handleLogin} onSwitchToRegister={() => setAuthMode('register')} />
+        ) : (
+          <Register onRegister={handleRegister} onSwitchToLogin={() => setAuthMode('login')} />
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 text-slate-900 overflow-hidden">
-      {/* Navbar */}
-      <header className="bg-white border-b border-slate-200 flex-shrink-0">
-        <div className="w-full px-4 lg:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-indigo-600 p-1.5 rounded-lg shadow-sm">
-              <ChefHat className="text-white w-4 h-4" />
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900 overflow-hidden">
+      {/* Enhanced Navbar */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/60 flex-shrink-0 shadow-sm">
+        <div className="w-full px-4 lg:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-2 rounded-xl shadow-lg">
+              <ChefHat className="text-white w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg font-bold">SmartKOT</h1>
-              <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">
-                Dashboard
-              </span>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                SmartKOT
+              </h1>
+              <span className="text-xs text-slate-500 font-medium hidden sm:inline">Inventory Engine</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            <span className="text-xs text-slate-500 hidden sm:inline">
-              Online
-            </span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm bg-slate-100 px-3 py-1.5 rounded-full">
+              <User className="w-4 h-4 text-slate-500" />
+              <span className="hidden sm:inline text-slate-700 font-medium">{currentUser?.name}</span>
+              <span className="text-xs text-slate-500 bg-white px-2 py-0.5 rounded-full">{currentUser?.role}</span>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all duration-200 font-medium"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-sm"></span>
+              <span className="text-xs text-slate-600 font-medium hidden sm:inline">Live</span>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Main */}
-      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden pb-16 lg:pb-0">
-        {/* MENU COLUMN */}
-        <section
-          className={`
-          flex-col border-r border-slate-200 bg-white 
-          lg:flex-[3] lg:flex
-          ${activeTab === "menu" ? "flex" : "hidden"}
-        `}
-        >
-          <div className="p-4 border-b bg-white sticky top-0">
-            <h2 className="font-bold flex items-center gap-2">
-              <LayoutGrid className="w-4 h-4" /> Menu
+      {/* MAIN CONTENT */}
+      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* Mobile Tab Navigation */}
+        <div className="lg:hidden bg-white border-b border-slate-200 px-4 py-2">
+          <div className="flex gap-1">
+            <button
+              onClick={() => setActiveTab("menu")}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeTab === "menu"
+                  ? "bg-indigo-100 text-indigo-700 shadow-sm"
+                  : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4 inline mr-1" />
+              Menu
+            </button>
+            <button
+              onClick={() => setActiveTab("kitchen")}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                activeTab === "kitchen"
+                  ? "bg-indigo-100 text-indigo-700 shadow-sm"
+                  : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              <Receipt className="w-4 h-4 inline mr-1" />
+              {currentUser?.role === 'ADMIN' ? 'Dashboard' : 'Kitchen'}
+            </button>
+            {hasStaffPrivileges && (
+              <button
+                onClick={() => setActiveTab("inventory")}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  activeTab === "inventory"
+                    ? "bg-indigo-100 text-indigo-700 shadow-sm"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <UtensilsCrossed className="w-4 h-4 inline mr-1" />
+                Inventory
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Menu Column */}
+        <section className={`flex-col border-r border-slate-200/60 bg-white/50 backdrop-blur-sm lg:flex-[3] lg:flex ${activeTab === "menu" ? "flex" : "hidden"} transition-all duration-300`}>
+          <div className="p-4 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm sticky top-0 shadow-sm">
+            <h2 className="font-bold flex items-center gap-2 text-lg">
+              <LayoutGrid className="w-5 h-5 text-indigo-600" /> 
+              Menu
             </h2>
           </div>
-
           <div className="flex-1 overflow-y-auto p-4">
-            <MenuGrid
-              menu={MENU}
-              ingredients={inventory}
-              onAddToOrder={addToCart}
-            />
+            <MenuGrid menu={MENU} ingredients={inventory} onAddToOrder={addToCart} />
           </div>
-
-          {/* CART FOOTER */}
-          <div className="p-4 border-t bg-slate-50">
+          <div className="p-4 border-t border-slate-200/60 bg-slate-50/80 backdrop-blur-sm">
             {currentOrder.length > 0 ? (
-              <div>
-                <div className="flex justify-between mb-2 font-bold">
+              <div className="card">
+                <div className="flex justify-between mb-3 font-bold text-lg">
                   <span>Current Order</span>
-                  <span>${cartTotal.toFixed(2)}</span>
+                  <span className="text-indigo-600">${cartTotal.toFixed(2)}</span>
                 </div>
 
-                <ul className="max-h-24 overflow-y-auto text-sm mb-2">
+                <ul className="max-h-32 overflow-y-auto text-sm mb-4 space-y-1">
                   {currentOrder.map((item, idx) => (
-                    <li className="flex justify-between" key={idx}>
-                      <span>
-                        {item.quantity}x {item.dish.name}
-                      </span>
-                      <span>
-                        ${(item.dish.price * item.quantity).toFixed(2)}
-                      </span>
+                    <li className="flex justify-between py-1 px-2 bg-slate-50 rounded" key={idx}>
+                      <span>{item.quantity}x {item.dish.name}</span>
+                      <span className="font-medium">${(item.dish.price * item.quantity).toFixed(2)}</span>
                     </li>
                   ))}
                 </ul>
 
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => setCurrentOrder([])}
-                    className="text-slate-500"
+                  <button 
+                    onClick={() => setCurrentOrder([])} 
+                    className="btn-secondary flex-1"
                   >
                     Clear
                   </button>
-
-                  <button
-                    onClick={handlePlaceOrder}
-                    className="flex-1 bg-indigo-600 text-white rounded py-2"
+                  <button 
+                    onClick={handlePlaceOrder} 
+                    className="btn-primary flex-1 flex items-center justify-center gap-2"
                   >
-                    <ShoppingCart className="w-4 h-4 inline-block mr-1" />
-                    Place Order
+                    <ShoppingCart className="w-4 h-4" /> Place Order
                   </button>
                 </div>
               </div>
             ) : (
-              <p className="text-center text-slate-400">Cart is empty</p>
+              <div className="text-center py-8">
+                <ShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                <p className="text-slate-500">Your cart is empty</p>
+                <p className="text-sm text-slate-400">Add some delicious items!</p>
+              </div>
             )}
           </div>
         </section>
 
-        {/* KITCHEN COLUMN */}
-        <section
-          className={`
-          flex-col border-r bg-slate-50
-          lg:flex-[4] lg:flex
-          ${activeTab === "kitchen" ? "flex" : "hidden"}
-        `}
-        >
-          <div className="p-4 border-b bg-white sticky top-0 flex justify-between">
-            <h2 className="font-bold flex items-center gap-2">
-              <Receipt className="w-4 h-4" /> Kitchen
+        {/* Kitchen Column */}
+        <section className={`flex-col border-r border-slate-200/60 bg-gradient-to-br from-slate-50 to-slate-100 lg:flex-[4] lg:flex ${activeTab === "kitchen" ? "flex" : "hidden"} transition-all duration-300`}>
+          <div className="p-4 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm sticky top-0 shadow-sm flex justify-between items-center">
+            <h2 className="font-bold flex items-center gap-2 text-lg">
+              {currentUser?.role === 'ADMIN' ? (
+                <>
+                  <BarChart3 className="w-5 h-5 text-indigo-600" /> Delivery Dashboard
+                </>
+              ) : (
+                <>
+                  <Receipt className="w-5 h-5 text-indigo-600" /> Your Order is here..😀
+                </>
+              )}
             </h2>
-            <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs">
-              {activeKotsCount} Active
-            </span>
+            {currentUser?.role !== 'ADMIN' && (
+              <span className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 py-1 rounded-full text-sm font-medium shadow-sm">
+                {activeKotsCount} Active Orders
+              </span>
+            )}
           </div>
-
-          <div className="flex-1 overflow-y-auto p-4">
-            <KOTList
-              kots={kots}
-              onPayKOT={handlePayKOT}
-              onDeleteKOT={handleDeleteKOT}
-            />
-          </div>
-        </section>
-
-        {/* INVENTORY COLUMN */}
-        <section
-          className={`
-          flex-col bg-white 
-          lg:flex-[3] lg:flex
-          ${activeTab === "inventory" ? "flex" : "hidden"}
-        `}
-        >
-          <div className="border-b">
-            <AlertsPanel
-              alerts={alerts}
-              aiInsight={aiInsight}
-              onGenerateInsight={handleAiInsight}
-              isGenerating={isGeneratingInsight}
-            />
-          </div>
-
-          <div className="flex-1 flex flex-col">
-            <div className="p-3 bg-slate-50 border-b flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              <h2 className="font-bold text-sm">Live Inventory</h2>
-            </div>
-
-            <div className="flex-1 overflow-auto">
-              <InventoryTable ingredients={inventory} />
-            </div>
+          <div className="flex-1 overflow-y-auto">
+            {currentUser?.role === 'ADMIN' ? (
+              <DeliveryStats token={token} />
+            ) : (
+              <div className="p-4">
+                <KOTList
+                  kots={kots}
+                  currentUser={currentUser}
+                  deliveryAddress={deliveryAddress}
+                  setDeliveryAddress={setDeliveryAddress}
+                  onPayKOT={handlePayKOT}
+                  onDeleteKOT={handleDeleteKOT}
+                />
+              </div>
+            )}
           </div>
         </section>
+
+        {/* Inventory Column (staff only) */}
+        {hasStaffPrivileges && (
+          <section className={`flex-col bg-white/50 backdrop-blur-sm lg:flex-[3] lg:flex ${activeTab === "inventory" ? "flex" : "hidden"} transition-all duration-300`}>
+            <div className="border-b border-slate-200/60">
+              <AlertsPanel alerts={alerts} aiInsight={aiInsight} onGenerateInsight={handleAiInsight} isLoading={isGeneratingInsight} />
+            </div>
+            <InventoryTable ingredients={inventory} />
+          </section>
+        )}
       </main>
-
-      {/* MOBILE NAV */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t h-16 flex">
-        <button
-          onClick={() => setActiveTab("menu")}
-          className={`flex-1 flex flex-col items-center justify-center ${
-            activeTab === "menu" ? "text-indigo-600" : "text-slate-400"
-          }`}
-        >
-          <UtensilsCrossed className="w-5 h-5" />
-          <span className="text-[10px] font-bold uppercase">Menu</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("kitchen")}
-          className={`flex-1 flex flex-col items-center justify-center ${
-            activeTab === "kitchen" ? "text-indigo-600" : "text-slate-400"
-          }`}
-        >
-          <ChefHat className="w-5 h-5" />
-          <span className="text-[10px] font-bold uppercase">Kitchen</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("inventory")}
-          className={`flex-1 flex flex-col items-center justify-center ${
-            activeTab === "inventory" ? "text-indigo-600" : "text-slate-400"
-          }`}
-        >
-          <BarChart3 className="w-5 h-5" />
-          <span className="text-[10px] font-bold uppercase">Stock</span>
-        </button>
-      </nav>
     </div>
   );
 };

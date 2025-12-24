@@ -52,73 +52,81 @@ const MenuItem: React.FC<{
   };
 
   return (
-    <div className={`p-3 rounded-lg border flex flex-col gap-3 transition-all duration-300 bg-white
-      ${isAvailable ? 'border-slate-200 shadow-sm hover:shadow-md' : 'border-slate-100 opacity-60 grayscale'}`}>
+    <div className={`card group hover:border-indigo-200 transition-all duration-300 cursor-pointer ${
+      isAvailable ? 'hover:shadow-lg hover:-translate-y-1' : 'border-slate-100 opacity-60 grayscale'
+    }`}>
       
-      <div className="flex gap-3">
-        <div className="w-16 h-16 bg-slate-100 rounded-md overflow-hidden flex-shrink-0 relative">
-           <img src={dish.image} alt={dish.name} className="w-full h-full object-cover" />
+      <div className="flex gap-4">
+        <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl overflow-hidden flex-shrink-0 relative shadow-sm">
+           <img src={dish.image} alt={dish.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
            {!isAvailable && (
-             <div className="absolute inset-0 bg-slate-900/20 flex items-center justify-center">
-               <span className="bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">SOLD OUT</span>
+             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center">
+               <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">SOLD OUT</span>
              </div>
            )}
         </div>
         
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-slate-800 text-sm truncate">{dish.name}</h3>
-          <p className="text-xs text-slate-500 font-mono">${dish.price.toFixed(2)}</p>
+          <h3 className="font-bold text-slate-800 text-base truncate mb-1">{dish.name}</h3>
+          <p className="text-sm text-indigo-600 font-semibold">${dish.price.toFixed(2)}</p>
           
-          <div className="mt-1 flex flex-wrap gap-1">
+          <div className="mt-2 flex flex-wrap gap-1">
             {dish.recipe.slice(0, 3).map((r, idx) => {
                const ingName = ingredients.find(i => i.id === r.ingredientId)?.name;
                return ingName ? (
-                 <span key={idx} className="text-[9px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded border border-slate-200 truncate max-w-[80px]">
+                 <span key={idx} className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-full border border-slate-200 font-medium">
                    {ingName}
                  </span>
                ) : null;
             })}
           </div>
           {isAvailable ? (
-             <p className="text-[10px] text-emerald-600 font-medium mt-1">{limit} orders left</p>
+             <p className="text-xs text-emerald-600 font-medium mt-2 flex items-center gap-1">
+               <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+               {limit} available
+             </p>
           ) : (
-             <p className="text-[10px] text-red-500 font-medium mt-1">Out of Stock</p>
+             <p className="text-xs text-red-500 font-medium mt-2 flex items-center gap-1">
+               <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+               Out of stock
+             </p>
           )}
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-50">
+      <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-100 mt-4">
         {isAvailable ? (
-          <div className="flex items-center bg-slate-50 rounded border border-slate-200 h-8">
+          <div className="flex items-center bg-slate-50 rounded-lg border border-slate-200 h-10 overflow-hidden">
             <button 
               onClick={handleDecrement}
               disabled={quantity <= 1}
-              className="px-2 h-full hover:bg-slate-100 text-slate-600 disabled:opacity-30 flex items-center"
+              className="px-3 h-full hover:bg-slate-200 text-slate-600 disabled:opacity-30 flex items-center transition-colors"
             >
-              <Minus className="w-3 h-3" />
+              <Minus className="w-4 h-4" />
             </button>
-            <span className="w-6 text-center text-xs font-semibold text-slate-700">{quantity}</span>
+            <span className="w-8 text-center text-sm font-bold text-slate-700 bg-white">{quantity}</span>
             <button 
               onClick={handleIncrement}
               disabled={quantity >= limit}
-              className="px-2 h-full hover:bg-slate-100 text-slate-600 disabled:opacity-30 flex items-center"
+              className="px-3 h-full hover:bg-slate-200 text-slate-600 disabled:opacity-30 flex items-center transition-colors"
             >
-              <Plus className="w-3 h-3" />
+              <Plus className="w-4 h-4" />
             </button>
           </div>
         ) : (
-           <div className="h-8"></div> 
+           <div className="h-10"></div> 
         )}
 
         <button
           onClick={handleAdd}
           disabled={!isAvailable}
-          className={`h-8 px-3 rounded text-xs font-bold transition-all ml-auto
-            ${isAvailable 
-              ? 'bg-slate-900 text-white hover:bg-indigo-600 shadow-sm active:scale-95' 
-              : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+          className={`h-10 px-4 rounded-lg text-sm font-bold transition-all duration-200 ml-auto shadow-sm active:scale-95 ${
+            isAvailable 
+              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-indigo-200' 
+              : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+          }`}
         >
-          {isAvailable ? 'Add' : 'Unavailable'}
+          {isAvailable ? 'Add to Cart' : 'Unavailable'}
         </button>
       </div>
     </div>

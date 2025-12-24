@@ -8,9 +8,10 @@ interface AlertsPanelProps {
   onGenerateInsight: () => void;
   isGenerating: boolean;
   aiInsight: string | null;
+  showAiInsights?: boolean;
 }
 
-export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onGenerateInsight, isGenerating, aiInsight }) => {
+export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onGenerateInsight, isGenerating, aiInsight, showAiInsights = true }) => {
   return (
     <div className="bg-slate-900 text-slate-200 flex flex-col h-full max-h-[400px]">
       <div className="p-3 border-b border-slate-700 flex items-center justify-between bg-slate-900 sticky top-0 z-10">
@@ -34,11 +35,13 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onGenerateInsi
           alerts.map(alert => (
             <div 
               key={alert.id}
-              className={`p-2.5 rounded border-l-2 text-xs animate-in fade-in slide-in-from-right-4 duration-300
-                ${alert.type === AlertType.CRITICAL ? 'bg-red-950/40 border-red-500 text-red-200' : ''}
-                ${alert.type === AlertType.LOW_STOCK ? 'bg-amber-950/40 border-amber-500 text-amber-200' : ''}
-                ${alert.type === AlertType.EXPIRY ? 'bg-blue-950/40 border-blue-500 text-blue-200' : ''}
-              `}
+              className={`p-2.5 rounded border-l-2 text-xs animate-in fade-in slide-in-from-right-4 duration-300 ${
+                alert.type === AlertType.CRITICAL ? 'bg-red-950/40 border-red-500 text-red-200' : ''
+              } ${
+                alert.type === AlertType.LOW_STOCK ? 'bg-amber-950/40 border-amber-500 text-amber-200' : ''
+              } ${
+                alert.type === AlertType.EXPIRY ? 'bg-blue-950/40 border-blue-500 text-blue-200' : ''
+              }`}
             >
               <div className="flex items-start gap-2">
                  {alert.type === AlertType.EXPIRY ? <Clock className="w-3.5 h-3.5 mt-0.5 opacity-70"/> : <AlertTriangle className="w-3.5 h-3.5 mt-0.5 opacity-70"/>}
@@ -52,29 +55,31 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts, onGenerateInsi
         )}
       </div>
       
-      {/* Generative AI Section */}
-      <div className="p-3 border-t border-slate-700 bg-slate-800/50">
-         {!aiInsight && (
-            <button 
-              onClick={onGenerateInsight}
-              disabled={isGenerating}
-              className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-               {isGenerating ? 'Analyzing...' : 'Generate Daily Insight'}
-               {!isGenerating && <Zap className="w-3 h-3 fill-white" />}
-            </button>
-         )}
-         
-         {aiInsight && (
-           <div className="bg-slate-800 p-2.5 rounded text-[11px] leading-relaxed border border-indigo-500/30 text-indigo-100">
-              <div className="flex justify-between items-start mb-1">
-                <strong className="text-indigo-400">Gemini Insight</strong>
-                <button onClick={() => window.location.reload()} className="text-[10px] underline opacity-50 hover:opacity-100">Refresh</button>
-              </div>
-              {aiInsight}
-           </div>
-         )}
-      </div>
+      {/* Generative AI Section - STAFF ONLY */}
+      {showAiInsights && (
+        <div className="p-3 border-t border-slate-700 bg-slate-800/50">
+           {!aiInsight && (
+              <button 
+                onClick={onGenerateInsight}
+                disabled={isGenerating}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                 {isGenerating ? 'Analyzing...' : 'Generate Daily Insight'}
+                 {!isGenerating && <Zap className="w-3 h-3 fill-white" />}
+              </button>
+           )}
+           
+           {aiInsight && (
+             <div className="bg-slate-800 p-2.5 rounded text-[11px] leading-relaxed border border-indigo-500/30 text-indigo-100">
+                <div className="flex justify-between items-start mb-1">
+                  <strong className="text-indigo-400">Gemini Insight</strong>
+                  <button onClick={() => window.location.reload()} className="text-[10px] underline opacity-50 hover:opacity-100">Refresh</button>
+                </div>
+                {aiInsight}
+             </div>
+           )}
+        </div>
+      )}
     </div>
   );
 };

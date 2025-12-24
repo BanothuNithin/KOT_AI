@@ -2,7 +2,8 @@ import { Ingredient, KOT } from "../types";
 
 export const generateInventoryInsight = async (
   inventory: Ingredient[],
-  kots: KOT[]
+  kots: KOT[],
+  token: string | null
 ): Promise<string> => {
   try {
     // Prepare the prompt
@@ -30,9 +31,12 @@ Provide:
     `;
 
     // Call backend API
-    const res = await fetch("https://kot-ai.onrender.com/ai/inventory", {
+    const res = await fetch("http://localhost:3001/ai/inventory", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
       body: JSON.stringify({ prompt }),
     });
 

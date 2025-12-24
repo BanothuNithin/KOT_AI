@@ -47,6 +47,7 @@ export interface KOT {
   items: KOTItem[];
   status: KOTStatus;
   totalAmount: number;
+  customerId?: string; // Add customer reference
 }
 
 export enum AlertType {
@@ -62,4 +63,37 @@ export interface StockAlert {
   type: AlertType;
   message: string;
   timestamp: number;
+}
+
+// Invoice System Types
+export interface Customer {
+  id?: string; // UUID
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  createdAt?: string;
+}
+
+export interface InvoiceItem {
+  id?: string; // UUID
+  invoiceId?: string;
+  dishId: string;
+  dishName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface Invoice {
+  id?: string; // UUID
+  invoiceNumber: string;
+  customerId: string;
+  kotId: string;
+  subtotal: number;
+  tax: number; // e.g., 18% GST
+  total: number;
+  status: 'generated' | 'paid' | 'cancelled';
+  createdAt?: string;
+  items: InvoiceItem[];
 }
