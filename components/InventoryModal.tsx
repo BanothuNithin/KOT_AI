@@ -127,3 +127,5 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 };
 
 export default InventoryModal;
+
+

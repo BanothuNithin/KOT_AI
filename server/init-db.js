@@ -57,3 +57,4 @@ const initDatabase = async () => {
 };
 
 initDatabase();
+

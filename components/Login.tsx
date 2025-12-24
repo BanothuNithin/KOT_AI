@@ -138,7 +138,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToRegister }) => {
 
           <div className="mt-8 text-center">
             <p className="text-slate-600">
-              New to SmartKOT?{' '}
+              New to SmartKOT${' '}
               <button
                 onClick={onSwitchToRegister}
                 className="text-indigo-600 hover:text-purple-600 font-semibold transition-colors"
@@ -173,3 +173,5 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToRegister }) => {
 };
 
 export default Login;
+
+

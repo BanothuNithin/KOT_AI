@@ -72,7 +72,7 @@ const MenuItem: React.FC<{
         
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-slate-800 text-base truncate mb-1">{dish.name}</h3>
-          <p className="text-sm text-indigo-600 font-semibold">${dish.price.toFixed(2)}</p>
+          <p className="text-sm text-indigo-600 font-semibold">₹{dish.price.toFixed(2)}</p>
           
           <div className="mt-2 flex flex-wrap gap-1">
             {dish.recipe.slice(0, 3).map((r, idx) => {
@@ -176,3 +176,5 @@ export const MenuGrid: React.FC<MenuGridProps> = ({ menu, ingredients, onAddToOr
     </div>
   );
 };
+
+

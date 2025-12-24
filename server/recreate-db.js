@@ -74,3 +74,4 @@ const recreateTables = async () => {
 };
 
 recreateTables();
+

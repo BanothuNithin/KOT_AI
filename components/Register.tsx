@@ -207,7 +207,7 @@ const Register: React.FC<RegisterProps> = ({ onRegister, onSwitchToLogin }) => {
 
           <div className="mt-8 text-center">
             <p className="text-slate-600">
-              Already have an account?{' '}
+              Already have an account${' '}
               <button
                 onClick={onSwitchToLogin}
                 className="text-emerald-600 hover:text-teal-600 font-semibold transition-colors"
@@ -223,3 +223,5 @@ const Register: React.FC<RegisterProps> = ({ onRegister, onSwitchToLogin }) => {
 };
 
 export default Register;
+
+

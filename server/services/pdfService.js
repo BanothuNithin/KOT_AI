@@ -95,7 +95,7 @@ export const generateInvoicePDF = async (invoiceData) => {
       doc.text(name, 50, y);
       doc.text(item.quantity.toString(), 300, y);
       doc.text(`$${parseFloat(price).toFixed(2)}`, 350, y);
-      doc.text(`$${(price * item.quantity).toFixed(2)}`, 450, y);
+      doc.text(`₹${(price * item.quantity).toFixed(2)}`, 450, y);
       y += 20;
     });
 
@@ -106,7 +106,7 @@ export const generateInvoicePDF = async (invoiceData) => {
 
     doc.font('Helvetica-Bold');
     doc.text('Subtotal:', 350, y);
-    doc.text(`$${parseFloat(subtotal).toFixed(2)}`, 450, y);
+    doc.text(`₹${parseFloat(subtotal).toFixed(2)}`, 450, y);
     y += 20;
 
     doc.text('Tax (18%):', 350, y);
@@ -114,7 +114,7 @@ export const generateInvoicePDF = async (invoiceData) => {
     y += 20;
 
     doc.text('Total:', 350, y);
-    doc.text(`$${parseFloat(total).toFixed(2)}`, 450, y);
+    doc.text(`₹${parseFloat(total).toFixed(2)}`, 450, y);
 
     // Footer
     doc.moveDown(3);
@@ -138,3 +138,5 @@ export const generateInvoicePDF = async (invoiceData) => {
     throw error;
   }
 };
+
+

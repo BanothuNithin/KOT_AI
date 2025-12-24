@@ -1,16 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { KOT, KOTStatus } from '../types';
 import { CheckCircle2, Trash2, Clock, Receipt, Download } from 'lucide-react';
+import RazorpayPayment from './RazorpayPayment';
 
 interface KOTListProps {
   kots: KOT[];
-  onPayKOT: (id: string, address: string) => void; // Pass address to backend
+  currentUser?: any;
+  deliveryAddress?: string;
+  setDeliveryAddress?: (address: string) => void;
+  onPayKOT: (id: string, address: string) => void;
   onDeleteKOT: (id: string) => void;
 }
 
-export const KOTList: React.FC<KOTListProps> = ({ kots, onPayKOT, onDeleteKOT }) => {
+export const KOTList: React.FC<KOTListProps> = ({
+  kots,
+  currentUser,
+  deliveryAddress: propDeliveryAddress,
+  setDeliveryAddress: propSetDeliveryAddress,
+  onPayKOT,
+  onDeleteKOT
+}) => {
   const [payingKOTId, setPayingKOTId] = useState<string | null>(null);
-  const [deliveryAddress, setDeliveryAddress] = useState<string>('');
+  const [deliveryAddress, setDeliveryAddress] = useState<string>(propDeliveryAddress || '');
+
+  // Sync delivery address with props
+  useEffect(() => {
+    if (propDeliveryAddress !== undefined) {
+      setDeliveryAddress(propDeliveryAddress);
+    }
+  }, [propDeliveryAddress]);
+
+  // Sync local delivery address changes with parent
+  const handleDeliveryAddressChange = (address: string) => {
+    setDeliveryAddress(address);
+    if (propSetDeliveryAddress) {
+      propSetDeliveryAddress(address);
+    }
+  };
 
   const sortedKots = [...kots].sort((a, b) => {
     if (a.status === KOTStatus.ACTIVE && b.status !== KOTStatus.ACTIVE) return -1;
@@ -54,6 +80,77 @@ export const KOTList: React.FC<KOTListProps> = ({ kots, onPayKOT, onDeleteKOT })
     onPayKOT(kotId, deliveryAddress);
     setPayingKOTId(null);
     setDeliveryAddress('');
+  };
+
+  const handlePaymentSuccess = async (paymentData: any) => {
+    try {
+      console.log('✅ Payment success data:', paymentData);
+
+      // Find the KOT being paid
+      const kot = kots.find(k => k.id === payingKOTId);
+      if (!kot) {
+        alert('Order not found');
+        return;
+      }
+
+      // Process the payment with delivery address
+      await onPayKOT(kot.id, deliveryAddress);
+
+      // Reset state
+      setPayingKOTId(null);
+      setDeliveryAddress('');
+
+      alert(`Payment successful! ₹${(paymentData.amount / 100).toFixed(2)} paid. Invoice has been generated.`);
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      alert('Payment successful but failed to process order. Please contact support.');
+    }
+  };
+
+  // Debug function to check authentication
+  const debugAuth = () => {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    console.log('🔍 Auth Debug:');
+    console.log('- Token exists:', !!token);
+    console.log('- Token length:', token?.length);
+    console.log('- User exists:', !!user);
+    console.log('- Current user prop:', !!currentUser);
+    console.log('- User data:', currentUser);
+
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('- Token expires:', new Date(payload.exp * 1000));
+        console.log('- Token expired:', Date.now() > payload.exp * 1000);
+      } catch (e) {
+        console.log('- Token decode failed');
+      }
+    }
+  };
+
+  // Call debug on component mount
+  React.useEffect(() => {
+    debugAuth();
+  }, []);
+
+  const handlePaymentFailure = (error: any) => {
+    console.error('Payment failed:', error);
+
+    // Provide user-friendly error messages
+    let errorMessage = 'Payment failed. Please try again.';
+
+    if (error.message?.includes('Authentication required')) {
+      errorMessage = 'Please log in again to continue with payment.';
+    } else if (error.message?.includes('HTTP 401')) {
+      errorMessage = 'Session expired. Please log in again.';
+    } else if (error.message?.includes('HTTP 500')) {
+      errorMessage = 'Server error. Please try again later.';
+    } else if (error.message?.includes('Failed to load Razorpay SDK')) {
+      errorMessage = 'Payment service unavailable. Please check your internet connection.';
+    }
+
+    alert(errorMessage);
   };
 
   return (
@@ -100,7 +197,7 @@ export const KOTList: React.FC<KOTListProps> = ({ kots, onPayKOT, onDeleteKOT })
               </div>
             </div>
             <div className="text-right">
-              <span className="block font-bold text-slate-900">${kot.totalAmount.toFixed(2)}</span>
+              <span className="block font-bold text-slate-900">₹{kot.totalAmount.toFixed(2)}</span>
             </div>
           </div>
 
@@ -111,14 +208,14 @@ export const KOTList: React.FC<KOTListProps> = ({ kots, onPayKOT, onDeleteKOT })
                 <span>
                   {item.dish.name} <span className="text-slate-400">x{item.quantity}</span>
                 </span>
-                <span className="font-mono">${(item.dish.price * item.quantity).toFixed(2)}</span>
+                <span className="font-mono">₹{(item.dish.price * item.quantity).toFixed(2)}</span>
               </div>
             ))}
           </div>
 
           {/* Actions */}
           {kot.status === KOTStatus.ACTIVE && (
-            <div className="flex flex-col gap-2 pt-3 border-t border-slate-100">
+            <div className="flex flex-col gap-3 pt-3 border-t border-slate-100">
               {!payingKOTId || payingKOTId !== kot.id ? (
                 <div className="flex gap-2">
                   <button
@@ -126,7 +223,7 @@ export const KOTList: React.FC<KOTListProps> = ({ kots, onPayKOT, onDeleteKOT })
                     className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 shadow-emerald-200 shadow-sm transition-colors"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    Pay & Commit
+                    Pay with Razorpay
                   </button>
                   <button
                     onClick={() => onDeleteKOT(kot.id)}
@@ -137,25 +234,42 @@ export const KOTList: React.FC<KOTListProps> = ({ kots, onPayKOT, onDeleteKOT })
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2">
-                  {/* User Details (you can replace with actual user data) */}
-                  <div className="text-sm text-slate-700">
-                    <p><strong>Name:</strong> John Doe</p>
-                    <p><strong>Email:</strong> john@example.com</p>
-                    <p><strong>Phone:</strong> 9876543210</p>
+                <div className="space-y-4">
+                  {/* Delivery Address Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Delivery Address *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter complete delivery address"
+                      value={deliveryAddress}
+                      onChange={(e) => handleDeliveryAddressChange(e.target.value)}
+                      className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    />
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Enter delivery address"
-                    value={deliveryAddress}
-                    onChange={(e) => setDeliveryAddress(e.target.value)}
-                    className="border rounded-lg p-2 text-sm w-full"
+
+                  {/* Razorpay Payment Component */}
+                  <RazorpayPayment
+                    amount={kot.totalAmount}
+                    orderId={kot.id}
+                    customerDetails={{
+                      name: currentUser?.name || 'Customer',
+                      email: currentUser?.email || '',
+                      phone: currentUser?.phone || ''
+                    }}
+                    onSuccess={handlePaymentSuccess}
+                    onFailure={handlePaymentFailure}
+                    disabled={!deliveryAddress.trim()}
+                    className="w-full"
                   />
+
                   <button
-                    onClick={() => handleCommitPayment(kot.id)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg text-sm font-medium"
+                    onClick={() => setPayingKOTId(null)}
+                    className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 px-3 rounded-lg text-sm font-medium transition-colors"
                   >
-                    Confirm & Generate Invoice
+                    Cancel
                   </button>
                 </div>
               )}
@@ -188,3 +302,5 @@ export const KOTList: React.FC<KOTListProps> = ({ kots, onPayKOT, onDeleteKOT })
     </div>
   );
 };
+
+

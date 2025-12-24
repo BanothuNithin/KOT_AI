@@ -228,3 +228,5 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ ingredients }) =
     </div>
   );
 };
+
+

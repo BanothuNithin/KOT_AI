@@ -438,14 +438,14 @@ const App: React.FC = () => {
                 <div className="card">
                   <div className="flex justify-between mb-3 font-bold text-lg">
                     <span>Current Order</span>
-                    <span className="text-indigo-600">${cartTotal.toFixed(2)}</span>
+                    <span className="text-indigo-600">₹{cartTotal.toFixed(2)}</span>
                   </div>
 
                   <ul className="max-h-32 overflow-y-auto text-sm mb-4 space-y-1">
                     {currentOrder.map((item, idx) => (
                       <li className="flex justify-between py-1 px-2 bg-slate-50 rounded" key={idx}>
                         <span>{item.quantity}x {item.dish.name}</span>
-                        <span className="font-medium">${(item.dish.price * item.quantity).toFixed(2)}</span>
+                        <span className="font-medium">₹{(item.dish.price * item.quantity).toFixed(2)}</span>
                       </li>
                     ))}
                   </ul>
@@ -561,14 +561,14 @@ const App: React.FC = () => {
                 <div className="card">
                   <div className="flex justify-between mb-3 font-bold text-lg">
                     <span>Current Order</span>
-                    <span className="text-indigo-600">${cartTotal.toFixed(2)}</span>
+                    <span className="text-indigo-600">₹{cartTotal.toFixed(2)}</span>
                   </div>
 
                   <ul className="max-h-32 overflow-y-auto text-sm mb-4 space-y-1">
                     {currentOrder.map((item, idx) => (
                       <li className="flex justify-between py-1 px-2 bg-slate-50 rounded" key={idx}>
                         <span>{item.quantity}x {item.dish.name}</span>
-                        <span className="font-medium">${(item.dish.price * item.quantity).toFixed(2)}</span>
+                        <span className="font-medium">₹{(item.dish.price * item.quantity).toFixed(2)}</span>
                       </li>
                     ))}
                   </ul>
@@ -749,3 +749,5 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+

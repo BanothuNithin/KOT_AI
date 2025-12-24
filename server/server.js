@@ -4,6 +4,7 @@ import Groq from "groq-sdk";
 import dotenv from "dotenv";
 import { testConnection } from "./db/connection.js";
 import invoiceRoutes from "./routes/invoices.js";
+import paymentRoutes from "./routes/payments.js";
 import { router as authRoutes, authenticateToken } from "./routes/auth.js";
 
 dotenv.config();
@@ -65,5 +66,10 @@ app.get('/api/delivery-stats', authenticateToken, (req, res) => {
 // Protected invoice routes
 app.use('/api', authenticateToken, invoiceRoutes);
 
+// Protected payment routes
+app.use('/api/payments', authenticateToken, paymentRoutes);
+
 console.log('Starting server on port 3001...');
 app.listen(3001, () => console.log("Backend running on http://localhost:3001"));
+
+
