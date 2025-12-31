@@ -110,7 +110,7 @@ const CustomerDetails: React.FC<CustomerDetailsProps> = ({ onCustomerSubmit, tok
           <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-full mb-4">
             <User className="w-8 h-8 text-indigo-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to SmartKOT</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to PrimeOps</h1>
           <p className="text-gray-600">Please enter your details to continue</p>
         </div>
 

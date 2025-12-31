@@ -381,7 +381,7 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                SmartKOT
+                PrimeOps
               </h1>
               <span className="text-xs text-slate-500 font-medium hidden sm:inline">Inventory Engine</span>
             </div>

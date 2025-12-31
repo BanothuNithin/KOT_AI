@@ -1,4 +1,4 @@
--- SmartKOT Database Schema
+-- PrimeOps Database Schema
 -- Run this SQL to create the database and tables
 
 CREATE DATABASE IF NOT EXISTS smartkot_db;

@@ -65,7 +65,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToRegister }) => {
             <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
               Welcome Back
             </h2>
-            <p className="text-slate-600">Sign in to SmartKOT</p>
+            <p className="text-slate-600">Sign in to PrimeOps</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -138,7 +138,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSwitchToRegister }) => {
 
           <div className="mt-8 text-center">
             <p className="text-slate-600">
-              New to SmartKOT${' '}
+              New to PrimeOps${' '}
               <button
                 onClick={onSwitchToRegister}
                 className="text-indigo-600 hover:text-purple-600 font-semibold transition-colors"

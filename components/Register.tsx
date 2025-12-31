@@ -73,7 +73,7 @@ const Register: React.FC<RegisterProps> = ({ onRegister, onSwitchToLogin }) => {
             <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-2">
               Create Account
             </h2>
-            <p className="text-slate-600">Join SmartKOT today</p>
+            <p className="text-slate-600">Join PrimeOps today</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">

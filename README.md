@@ -1,4 +1,4 @@
-# 🎯 **SmartKOT — AI-Powered Kitchen Order Ticket (KOT) & Inventory Engine**
+# 🎯 **PrimeOps — AI-Powered Kitchen Order Ticket (KOT) & Inventory Engine**
 
 ### *A production-grade restaurant management engine with real-time AI alerts, built using React, Node.js, and Groq LLM.*
 
@@ -23,7 +23,7 @@
 
 ## 🚀 **Overview**
 
-**SmartKOT** is a full-stack restaurant operations engine designed to handle:
+**PrimeOps** is a full-stack restaurant operations engine designed to handle:
 
 ✔ Fast menu ordering
 ✔ Real-time KOT generation
@@ -42,7 +42,7 @@ With a modern UI and production-grade logic, SmartKOT mirrors the workflow of re
 
 ## 🎨 **UI/UX Design**
 
-**SmartKOT** features a modern, production-ready interface with:
+**PrimeOps** features a modern, production-ready interface with:
 
 ### ✨ **Design System**
 * **Glassmorphism Effects**: Backdrop blur and transparency for depth
@@ -86,9 +86,9 @@ With a modern UI and production-grade logic, SmartKOT mirrors the workflow of re
 
 ---
 
-# 🧠 **Why SmartKOT Is Special**
+# 🧠 **Why PrimeOps Is Special**
 
-SmartKOT implements **real-world inventory behavior**, not dummy logic.
+PrimeOps implements **real-world inventory behavior**, not dummy logic.
 
 ### ✔ Temporary Stock Reservation
 

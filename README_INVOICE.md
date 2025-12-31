@@ -1,4 +1,4 @@
-# Setup Instructions for SmartKOT Invoice System
+# Setup Instructions for PrimeOps Invoice System
 
 ## Prerequisites
 1. Install MySQL Server (https://dev.mysql.com/downloads/mysql/)
